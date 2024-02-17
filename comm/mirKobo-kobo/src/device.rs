@@ -42,10 +42,10 @@ pub fn get_screen_size(bin_path: &str) -> (u32, u32) {
     let output = String::from_utf8(res.stdout).unwrap();
     let lines: Vec<&str> = output.split('\n').collect();
     let line: Vec<&str> = lines[3].split(' ').collect();
-    debug!("line: {:?}", line);
+    //debug!("line: {:?}", line);
     let x: u32 = line[1].parse().unwrap();
     let y: u32 = line[2].parse().unwrap();
 
-    debug!("Output of fbset: {}", output);
+    //debug!("Output of fbset: {}", output);
     (x, y)
 }

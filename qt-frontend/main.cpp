@@ -15,6 +15,8 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
+    qDebug() << "Starting";
+
     KoboPlatformFunctions::setFlashing(false);
 
     QRect screenGeometry = QGuiApplication::primaryScreen()->geometry();

@@ -20,6 +20,13 @@ bincode = "1.3.1"
 # Arguments
 clap = { version = "4.2.1", features = ["derive"] }
 
+# Images
+magick_rust = "0.19.1"
+# Xcap is slow as heck
+libwayshot = "0.3.0"
+scrap = {path = "rustdesk/libs/scrap", features = ["wayland"]}
+
 # Other
 rand = "0.8.5"
 sha256 = "1.5.0"
+tokio = { version = "1", features = ["full"] }

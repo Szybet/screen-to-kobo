@@ -13,15 +13,21 @@ use message_io::node::{self, NodeEvent};
 use crate::device::{click, get_screen, get_screen_size};
 
 // Other
-use std::sync::{mpsc, Arc};
-use std::{thread, fs};
-use std::time::Duration;
 use crate::Args;
+use std::sync::{mpsc, Arc};
+use std::time::Duration;
+use std::{fs, thread};
+
+use fbink_sys::*;
+use std::{ffi::CString, process::exit};
 
 enum LooseJobs {
     SendScreen(Vec<u8>),
     Stop,
 }
+
+use std::io::prelude::*;
+use std::os::unix::net::UnixStream;
 
 pub fn run(transport: Transport, remote_addr: RemoteAddr, args: &Args) {
     let (handler_regular, listener) = node::split();
@@ -32,15 +38,46 @@ pub fn run(transport: Transport, remote_addr: RemoteAddr, args: &Args) {
         .connect(transport, remote_addr.clone())
         .unwrap();
 
+    /*
+
+    let fbfd: ::std::os::raw::c_int = unsafe { fbink_open() };
+    if fbfd < 0 {
+        println!("Failed to open fbink");
+        exit(1);
+    }
+
+    let mut fbink_cfg: FBInkConfig =
+        unsafe { std::mem::transmute([0u8; std::mem::size_of::<FBInkConfig>()]) };
+    println!("fbink_cfg default state: {:?}", fbink_cfg);
+    fbink_cfg.is_flashing = false;
+
+    unsafe {
+        if fbink_init(fbfd, &fbink_cfg) < 0 {
+            println!("Failed to init fbink");
+            exit(1);
+        }
+    }
+
+    let x = get_screen_size("busybox");
+    let w = x.0 as i32;
+    let h = x.1 as i32;
+    info!("wxh: {}x{}", w, h);
+    */
+    /*
+    unsafe {
+        fbink_print_raw_data(fbfd, ss.as_mut_ptr(), w, h, ss.len(), 0, 0, &fbink_cfg);
+        fbink_wait_for_complete(fbfd, LAST_MARKER);
+    }
+    c*/
     let (tx_to_loose, rx_to_loose) = mpsc::sync_channel(1); // We want synced channel because of try_send
     thread::spawn(move || loop {
         if let Ok(event) = rx_to_loose.recv() {
             match event {
                 LooseJobs::SendScreen(ss) => {
-                    info!("Saving screen");
-                    if fs::write("/kobo/tmp/ss.png", ss).is_err() {
-                        info!("Failed to write to file");
-                    }
+                    info!("Sending screen over unix socket, length: {}", ss.len());
+                    let mut stream = UnixStream::connect("/kobo/tmp/screenRGB").unwrap();
+                    stream.write_all(&ss).unwrap();
+                    stream.flush().unwrap();
                 }
                 LooseJobs::Stop => {
                     break;
@@ -84,7 +121,6 @@ pub fn run(transport: Transport, remote_addr: RemoteAddr, args: &Args) {
                             info!("Failed to send screen further");
                         }
                     }
-
                 }
             }
             NetEvent::Disconnected(_) => {

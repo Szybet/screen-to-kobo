@@ -16,10 +16,9 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
     void refresh();
-    QGraphicsScene* scene;
-    QGraphicsPixmapItem* item;
-    QTimer* timer;
-
+    void dataAdd(QByteArray data);
+    void dataFull();
+    QByteArray bytes;
 private:
     Ui::MainWindow *ui;
 };

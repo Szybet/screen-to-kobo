@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "qthread.h"
 #include "ui_mainwindow.h"
 
 #include <QDebug>
@@ -6,6 +7,12 @@
 #include <QTimer>
 #include <QFile>
 #include <QScreen>
+#include <QLocalSocket>
+
+#include "data.h"
+
+#include "einkenums.h"
+#include "koboplatformfunctions.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -13,12 +20,22 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-    timer = new QTimer(this);
-    connect(timer, &QTimer::timeout, this, &MainWindow::refresh);
-    timer->setInterval(30);
-    timer->start();
+    bytes.clear();
 
-    qDebug() << "Setup complete";
+    QThread * thread = new QThread();
+    dataObject * data = new dataObject();
+
+    QObject::connect(data, &dataObject::dataSend, this, &MainWindow::dataAdd);
+    QObject::connect(data, &dataObject::dataFull, this, &MainWindow::dataFull);
+
+    data->moveToThread(thread);
+    QObject::connect(thread, &QThread::started, data, &dataObject::start);
+    thread->start();
+
+    qDebug() << "Setting waveform mode";
+    KoboPlatformFunctions::setFullScreenRefreshMode(WaveForm_A2);
+    KoboPlatformFunctions::setFastScreenRefreshMode(WaveForm_A2);
+    KoboPlatformFunctions::setPartialScreenRefreshMode(WaveForm_A2);
 }
 
 MainWindow::~MainWindow()
@@ -26,19 +43,23 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::refresh() {
-    QString filePath = "/tmp/ss.png";
-    if (QFile::exists(filePath)) {
-        QPixmap pixmap(filePath);
-        if (!pixmap.isNull()) {
-            qDebug() << "Setting pixmap";
-            //item->setPixmap(pixmap);
-            ui->label->setPixmap(pixmap);
-            QFile::remove(filePath);
-        } else {
-            qDebug() << "Failed to load the image from file. Invalid Pixmap";
-        }
-    } else {
-        //qDebug() << "File does not exist.";
-    }
+void MainWindow::dataAdd(QByteArray data) {
+    qDebug() << "Adding data";
+    bytes.append(data);
 }
+
+void MainWindow::dataFull() {
+    qDebug() << "Data full with length:" << bytes.size();
+    refresh();
+    bytes.clear();
+}
+
+void MainWindow::refresh() {
+    qDebug() << "Updating mainwindow...";
+
+    QPixmap pixmap;
+    pixmap.loadFromData(bytes, "png", Qt::AutoColor);
+    ui->label->setPixmap(pixmap);
+}
+
+

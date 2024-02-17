@@ -2,3 +2,6 @@
 **/build
 *.user
 .vscode
+
+*.pro.*
+*.qtc_clangd*
